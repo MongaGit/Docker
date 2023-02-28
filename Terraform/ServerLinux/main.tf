@@ -39,7 +39,7 @@ resource "azurerm_subnet" "subnet" {
 
 ## Create Security Group to access linux
 resource "azurerm_network_security_group" "nsg" {
-  name                = "${var.resource_group_name["name"]}-NSG"
+  name                = "NSG-${var.resource_group_name["name"]}"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   tags                = var.tags
@@ -73,16 +73,16 @@ resource "azurerm_network_security_group" "nsg" {
 }
 
 ## Associate the linux NSG with the subnet
-resource "azurerm_subnet_network_security_group_association" "linux-vm-nsg-association" {
+resource "azurerm_subnet_network_security_group_association" "VM-nsg-association" {
   depends_on=[azurerm_resource_group.rg]
   subnet_id                 = azurerm_subnet.subnet.id
   network_security_group_id = azurerm_network_security_group.nsg.id
 }
 
 ## Get a Static Public IP
-resource "azurerm_public_ip" "linux-vm-ip" {
+resource "azurerm_public_ip" "VM-ip" {
   depends_on=[azurerm_resource_group.rg] 
-  name                = "${var.VirtualMachine["VM_Name"]}-IP"
+  name                = "IP-${var.VirtualMachine["VM_Name"]}"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   allocation_method   = "Static"
@@ -90,9 +90,9 @@ resource "azurerm_public_ip" "linux-vm-ip" {
 }
 
 ## Create Network Card for linux VM
-resource "azurerm_network_interface" "linux-vm-nic" {
+resource "azurerm_network_interface" "VM-nic" {
   depends_on = [azurerm_resource_group.rg]
-  name                = "${var.VirtualMachine["VM_Name"]}-nic"
+  name                = "NIC-${var.VirtualMachine["VM_Name"]}"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   tags                = var.tags
@@ -101,17 +101,17 @@ resource "azurerm_network_interface" "linux-vm-nic" {
     name                          = "internal"
     subnet_id                     = azurerm_subnet.subnet.id
     private_ip_address_allocation = "Dynamic"
-    public_ip_address_id          = azurerm_public_ip.linux-vm-ip.id
+    public_ip_address_id          = azurerm_public_ip.VM-ip.id
   }
 }
 
 ## Create Linux VM with linux server
-resource "azurerm_linux_virtual_machine" "linux-vm" {
-  depends_on=[azurerm_network_interface.linux-vm-nic]
+resource "azurerm_linux_virtual_machine" "VM" {
+  depends_on=[azurerm_network_interface.VM-nic]
   location              = azurerm_resource_group.rg.location
   resource_group_name   = azurerm_resource_group.rg.name
   name                  = var.VirtualMachine["VM_Name"]
-  network_interface_ids = [azurerm_network_interface.linux-vm-nic.id]
+  network_interface_ids = [azurerm_network_interface.VM-nic.id]
   size                  = var.VirtualMachine["size"]
   tags                  = var.tags
   
@@ -125,7 +125,7 @@ resource "azurerm_linux_virtual_machine" "linux-vm" {
   os_disk {
     name                 = "${var.VirtualMachine["VM_Name"]}-DISK"
     caching              = "ReadWrite"
-    storage_account_type = var.VirtualMachine["storage_acc_type"]  
+    storage_account_type = var.VirtualMachine["storage_account_type"]  
   }
   
   computer_name  = var.VirtualMachine["VM_Name"]

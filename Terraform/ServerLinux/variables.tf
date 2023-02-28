@@ -14,13 +14,15 @@ variable "VirtualMachine" {
   type = map(string)
   default = {
     
-    ## OS Config
-    "VM_Name"               = "SRV-DOCKER"
+    ## User
     "linux_admin_username"  = "monga"
     "linux_admin_password"  = "Monga@@2023!"
+
+    ## OS Config
+    "VM_Name"               = "SRV-DOCKER"
     "size"                  = "Standard_F2"
-    ## Disk type
-    "storage_acc_type"      = "Standard_LRS"
+    "storage_account_type"      = "Standard_LRS"
+
     ## Source Image Reference
     "publisher"             = "Canonical"
     "offer"                 = "UbuntuServer"
@@ -32,6 +34,7 @@ variable "VirtualMachine" {
 variable "tags" {
   type        = map(string)
   default = {
+    
     env         = "DockerServer",
     rg          = "rg-monga",
     dept        = "dev",
