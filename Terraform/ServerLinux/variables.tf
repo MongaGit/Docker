@@ -19,9 +19,9 @@ variable "VirtualMachine" {
     "linux_admin_password"  = "Monga@@2023!"
 
     ## OS Config
-    "VM_Name"               = "SRV-DOCKER"
+    "VM_Name"               = "DOCKER01"
     "size"                  = "Standard_F2"
-    "storage_account_type"      = "Standard_LRS"
+    "storage_account_type"  = "Standard_LRS"
 
     ## Source Image Reference
     "publisher"             = "Canonical"
@@ -34,7 +34,7 @@ variable "VirtualMachine" {
 variable "tags" {
   type        = map(string)
   default = {
-    
+
     env         = "DockerServer",
     rg          = "rg-monga",
     dept        = "dev",

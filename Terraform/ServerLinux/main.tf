@@ -44,32 +44,21 @@ resource "azurerm_network_security_group" "nsg" {
   resource_group_name = azurerm_resource_group.rg.name
   tags                = var.tags
 
+}
 
-  security_rule {
-    name                       = "AllowHTTP"
-    description                = "Allow HTTP"
-    priority                   = 100
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "80"
-    source_address_prefix      = "Internet"
-    destination_address_prefix = "*"
-  }
-  
-  security_rule {
-    name                       = "AllowSSH"
-    description                = "Allow SSH"
-    priority                   = 150
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "22"
-    source_address_prefix      = "Internet"
-    destination_address_prefix = "*"
-  }
+resource "azurerm_network_security_rule" "rules" {
+  for_each                    = local.nsgrules 
+  name                        = each.key
+  direction                   = each.value.direction
+  access                      = each.value.access
+  priority                    = each.value.priority
+  protocol                    = each.value.protocol
+  source_port_range           = each.value.source_port_range
+  destination_port_range      = each.value.destination_port_range
+  source_address_prefix       = each.value.source_address_prefix
+  destination_address_prefix  = each.value.destination_address_prefix
+  resource_group_name         = azurerm_resource_group.rg.name
+  network_security_group_name = azurerm_network_security_group.nsg.name
 }
 
 ## Associate the linux NSG with the subnet
@@ -113,8 +102,7 @@ resource "azurerm_linux_virtual_machine" "VM" {
   name                  = var.VirtualMachine["VM_Name"]
   network_interface_ids = [azurerm_network_interface.VM-nic.id]
   size                  = var.VirtualMachine["size"]
-  tags                  = var.tags
-  
+  tags                  = var.tags 
   source_image_reference {
     publisher = var.VirtualMachine["publisher"]
     offer     = var.VirtualMachine["offer"]
@@ -123,7 +111,7 @@ resource "azurerm_linux_virtual_machine" "VM" {
   }
   
   os_disk {
-    name                 = "${var.VirtualMachine["VM_Name"]}-DISK"
+    name                 = "DISK-${var.VirtualMachine["VM_Name"]}"
     caching              = "ReadWrite"
     storage_account_type = var.VirtualMachine["storage_account_type"]  
   }
@@ -134,7 +122,10 @@ resource "azurerm_linux_virtual_machine" "VM" {
   disable_password_authentication = false
 }
 
-
+## Data template Bash bootstrapping file
+data "template_file" "linux-vm-cloud-init" {
+  template = file("linux-vm-docker.sh")
+}
 
 
 
