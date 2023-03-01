@@ -32,8 +32,8 @@ variable "VirtualMachine" {
 }
 
 variable "scfile" {
-  type    = string
-  default = "linux-vm-docker.bash"
+  type      = string
+  default   = "linux-vm-docker.bash"
 }
 
 variable "tags" {
@@ -47,15 +47,16 @@ variable "tags" {
   }
 }
 
-## Sizes
-
-# D2as_v4   ## CPU 02 | RAM 08 ($ 78.11)
-# B2ms      ## CPU 02 | RAM 04 ($ 66.43)
-##
-# B4ms      ## CPU 04 | RAM 16 ($132.86) 
-##
-# E4_v5     ## CPU 04 | RAM 32 ($205.86) 
-# DS3_v2    ## CPU 04 | RAM 14 ($250.39)
-##
-# D8s_v5    ## CPU 08 | RAM 32 ($312.44)
-
+#########################################
+##             VM SIZES                ##
+#########################################
+# D2as_v4   | CPU 02 | RAM 08 ($ 78.11) #
+# B2ms      | CPU 02 | RAM 04 ($ 66.43) #
+#########################################
+# B4ms      | CPU 04 | RAM 16 ($132.86) #
+#########################################
+# E4_v5     | CPU 04 | RAM 32 ($205.86) #
+# DS3_v2    | CPU 04 | RAM 14 ($250.39) #
+#########################################
+# D8s_v5    | CPU 08 | RAM 32 ($312.44) #
+#########################################
