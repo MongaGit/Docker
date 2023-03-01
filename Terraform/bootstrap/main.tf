@@ -40,10 +40,8 @@ resource "null_resource" "docker_provisioner" {
 
     provisioner "remote-exec" {
         inline = [
-            "sudo chmod +x /tmp/linux-vm-docker.sh",
-            "chmod +x /tmp/linux-vm-docker.sh",
+            "sh /tmp/linux-docker.sh",
         ]
     }
-
-
 } 
+
