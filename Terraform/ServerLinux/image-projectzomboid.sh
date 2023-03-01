@@ -2,13 +2,12 @@
 #sudo yum update -y
 
 echo "Init Terraform"
-sudo apt update && \ 
-sudo apt install -y docker.io \ 
-sudo apt update \
-sudo docker pull lorthe/monga_projectzomboid:latest \
+sudo apt update
+sudo apt install -y docker.io 
+sudo apt update
+sudo docker pull lorthe/monga_projectzomboid:latest
 
 ## Run Docker ProjectZomboid
-sudo docker push lorthe/projectzomboidserver:latest
 sudo docker rm -f projectzomboid
 
 sudo docker run -d -t -i -e SERVERNAME='MONGA_PZServer' \
