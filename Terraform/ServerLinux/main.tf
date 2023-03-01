@@ -20,7 +20,7 @@ resource "azurerm_resource_group" "rg" {
   tags     = var.tags
 }
 
-# Create the network VNET
+
 resource "azurerm_virtual_network" "vnet" {
   name                = "vNET-${var.resource_group_name["name"]}"
   location            = azurerm_resource_group.rg.location
@@ -28,16 +28,12 @@ resource "azurerm_virtual_network" "vnet" {
   address_space       = ["10.0.0.0/16"]
   tags                = var.tags
 }
-
-# Create a subNet
 resource "azurerm_subnet" "subnet" {
   name                 = "sNet-Local"
   resource_group_name  = azurerm_resource_group.rg.name
   virtual_network_name = azurerm_virtual_network.vnet.name
   address_prefixes     = ["10.0.2.0/24"]
 }
-
-## Create Security Group to access linux
 resource "azurerm_network_security_group" "nsg" {
   name                = "NSG-${var.resource_group_name["name"]}"
   location            = azurerm_resource_group.rg.location
@@ -45,7 +41,6 @@ resource "azurerm_network_security_group" "nsg" {
   tags                = var.tags
 
 }
-
 resource "azurerm_network_security_rule" "rules" {
   for_each                    = local.nsgrules 
   name                        = each.key
@@ -61,7 +56,25 @@ resource "azurerm_network_security_rule" "rules" {
   network_security_group_name = azurerm_network_security_group.nsg.name
 }
 
-## Associate the linux NSG with the subnet
+## Storage Account
+resource "azurerm_storage_account" "storage_account" {
+  name                      = var.VirtualMachine["linux_admin_username"]
+  resource_group_name       = azurerm_resource_group.rg.name
+  location                  = azurerm_resource_group.rg.location
+  account_tier              = "Standard"
+  account_replication_type  = "LRS"
+  tags                      = var.tags
+}
+
+## Storage Container
+resource "azurerm_storage_container" "storage_container" {
+  name                  = "storage-${var.VirtualMachine["linux_admin_username"]}"
+  storage_account_name  = azurerm_storage_account.storage_account.name
+  container_access_type = "private"
+}
+
+
+## Associate VM NSG with the subnet
 resource "azurerm_subnet_network_security_group_association" "VM-nsg-association" {
   depends_on=[azurerm_resource_group.rg]
   subnet_id                 = azurerm_subnet.subnet.id
@@ -95,37 +108,86 @@ resource "azurerm_network_interface" "VM-nic" {
 }
 
 ## Create Linux VM with linux server
-resource "azurerm_linux_virtual_machine" "VM" {
+resource "azurerm_virtual_machine" "VM" {
   depends_on=[azurerm_network_interface.VM-nic]
+
   location              = azurerm_resource_group.rg.location
   resource_group_name   = azurerm_resource_group.rg.name
   name                  = var.VirtualMachine["VM_Name"]
   network_interface_ids = [azurerm_network_interface.VM-nic.id]
-  size                  = var.VirtualMachine["size"]
+  vm_size               = var.VirtualMachine["size"]
   tags                  = var.tags 
-  source_image_reference {
+
+  storage_image_reference {
     publisher = var.VirtualMachine["publisher"]
     offer     = var.VirtualMachine["offer"]
     sku       = var.VirtualMachine["sku"]    
     version   = var.VirtualMachine["version"]
   }
   
-  os_disk {
-    name                 = "DISK-${var.VirtualMachine["VM_Name"]}"
-    caching              = "ReadWrite"
-    storage_account_type = var.VirtualMachine["storage_account_type"]  
+  storage_os_disk {
+    name          = "DISK-${var.VirtualMachine["VM_Name"]}"
+    vhd_uri       = "${azurerm_storage_account.storage_account.primary_blob_endpoint}${azurerm_storage_container.storage_container.name}/DISK-${var.VirtualMachine["VM_Name"]}.vhd"
+    caching       = "ReadWrite"
+    create_option = "FromImage"
+  }
+
+  os_profile {
+    computer_name  = var.VirtualMachine["VM_Name"]
+    admin_username = var.VirtualMachine["linux_admin_username"]
+    admin_password = var.VirtualMachine["linux_admin_password"]
   }
   
-  computer_name  = var.VirtualMachine["VM_Name"]
-  admin_username = var.VirtualMachine["linux_admin_username"]
-  admin_password = var.VirtualMachine["linux_admin_password"]
-  disable_password_authentication = false
+  os_profile_linux_config {
+    disable_password_authentication = false
+  }
+
 }
 
-## Data template Bash bootstrapping file
-data "template_file" "linux-vm-cloud-init" {
-  template = file("linux-vm-docker.sh")
+resource "azurerm_virtual_machine_extension" "Docker_Install" {
+  name                 = var.VirtualMachine["VM_Name"] 
+  virtual_machine_id   = azurerm_virtual_machine.VM.id
+  publisher            = "Microsoft.Azure.Extensions"
+  type                 = "CustomScript"
+  type_handler_version = "2.0"
+
+  settings = <<SETTINGS
+ {
+  "commandToExecute": "hostname && uptime"
+ }
+SETTINGS
+
+  #protected_settings = <<PROT
+  #{
+  #    "script": "${base64encode(file(var.scfile))}"
+  #}
+  #PROT
+   
 }
+
+## Execute Bash Command
+#resource "azurerm_virtual_machine_extension" "test" {
+#  name                 = "hostname"
+#  location             = "${azurerm_resource_group.rg.location}"
+#  resource_group_name  = "${azurerm_resource_group.rg.name}"
+#  virtual_machine_name = "${azurerm_linux_virtual_machine.VM.computer_name}"
+#  publisher            = "Microsoft.OSTCExtensions"
+#  type                 = "CustomScriptForLinux"
+#  type_handler_version = "1.2"
+#
+#  settings = <<SETTINGS
+#  {
+#  "fileUris": ["https://sag.blob.core.windows.net/sagcont/install_nginx_ubuntu.sh"],
+#    "commandToExecute": "sh install_nginx_ubuntu.sh"
+#  }
+#SETTINGS
+#
+#}
+#
+### Data template Bash bootstrapping file
+#data "template_file" "linux-vm-cloud-init" {
+#  template = file("linux-vm-docker.sh")
+#}
 
 
 
