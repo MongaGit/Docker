@@ -87,8 +87,13 @@ resource "azurerm_public_ip" "VM-ip" {
   name                = "IP-${var.VirtualMachine["VM_Name"]}"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
-  allocation_method   = "Static"
+  allocation_method   = "Dynamic"
   tags                = var.tags
+}
+
+data "azurerm_public_ip" "Public-IP" {
+  name = azurerm_public_ip.VM-ip.name
+  resource_group_name = azurerm_public_ip.VM-ip.resource_group_name
 }
 
 ## Create Network Card for linux VM
@@ -107,6 +112,9 @@ resource "azurerm_network_interface" "VM-nic" {
   }
 }
 
+# Data template Bash bootstrapping file
+
+####################################
 ## Create Linux VM with linux server
 resource "azurerm_virtual_machine" "VM" {
   depends_on=[azurerm_network_interface.VM-nic]
@@ -144,50 +152,42 @@ resource "azurerm_virtual_machine" "VM" {
 
 }
 
-resource "azurerm_virtual_machine_extension" "Docker_Install" {
-  name                 = var.VirtualMachine["VM_Name"] 
-  virtual_machine_id   = azurerm_virtual_machine.VM.id
-  publisher            = "Microsoft.Azure.Extensions"
-  type                 = "CustomScript"
-  type_handler_version = "2.0"
 
-#  settings = <<SETTINGS
-# {
-#  "commandToExecute": "hostname && uptime"
-# }
-#SETTINGS
-
-  protected_settings = <<PROT
-  {
-      "script": "${base64encode(file(var.scfile))}"
-  }
-  PROT
-   
+data "azurerm_public_ip" "Data-ip" {
+  name                = "${azurerm_public_ip.VM-ip.name}"
+  resource_group_name = "${azurerm_virtual_machine.VM.resource_group_name}"
 }
 
-## Execute Bash Command
-#resource "azurerm_virtual_machine_extension" "test" {
-#  name                 = "hostname"
-#  location             = "${azurerm_resource_group.rg.location}"
-#  resource_group_name  = "${azurerm_resource_group.rg.name}"
-#  virtual_machine_name = "${azurerm_linux_virtual_machine.VM.computer_name}"
-#  publisher            = "Microsoft.OSTCExtensions"
-#  type                 = "CustomScriptForLinux"
-#  type_handler_version = "1.2"
-#
-#  settings = <<SETTINGS
-#  {
-#  "fileUris": ["https://sag.blob.core.windows.net/sagcont/install_nginx_ubuntu.sh"],
-#    "commandToExecute": "sh install_nginx_ubuntu.sh"
-#  }
-#SETTINGS
-#
-#}
-#
-### Data template Bash bootstrapping file
-#data "template_file" "linux-vm-cloud-init" {
-#  template = file("linux-vm-docker.sh")
-#}
+ #Virtual Machine Extension to Install IIS
+resource "null_resource" "docker_provisioner" {
+
+    triggers = {
+        public_ip = data.azurerm_public_ip.Data-ip.ip_address
+    }
+
+    connection {
+        type  = "ssh"
+        host  = "${data.azurerm_public_ip.Data-ip.ip_address}"
+        user  = "${var.VirtualMachine["linux_admin_username"]}"
+        password  = "${var.VirtualMachine["linux_admin_password"]}"
+    }
+
+    provisioner "file" {
+        source  = "linux-docker.sh"
+        destination  = "/tmp/linux-docker.sh"
+    }
+
+    provisioner "remote-exec" {
+        inline = [
+            "sh /tmp/linux-docker.sh",
+            "sudo docker run -d -t -i -e SERVERNAME='MONGA_PZServer' -p 27015:27015/tcp -p 16261:16261/udp -p 16262:16262/udp -e ADMINPASSWORD='Password@123' -e FORCEUPDATE='' -e MOD_IDS='2931602698,2931602698' -e WORKSHOP_IDS='2875848298,2849247394,2923439994,2859296947,2859296947,2859296947' --name projectzomboid lorthe/monga_projectzomboid",
+            "sudo docker container ls",
+            "sudo docker exec -it projectzomboid bash && ",
+
+        ]
+    }
+} 
+
 
 
 
