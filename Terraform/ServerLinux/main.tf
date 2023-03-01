@@ -151,17 +151,17 @@ resource "azurerm_virtual_machine_extension" "Docker_Install" {
   type                 = "CustomScript"
   type_handler_version = "2.0"
 
-  settings = <<SETTINGS
- {
-  "commandToExecute": "hostname && uptime"
- }
-SETTINGS
+#  settings = <<SETTINGS
+# {
+#  "commandToExecute": "hostname && uptime"
+# }
+#SETTINGS
 
-  #protected_settings = <<PROT
-  #{
-  #    "script": "${base64encode(file(var.scfile))}"
-  #}
-  #PROT
+  protected_settings = <<PROT
+  {
+      "script": "${base64encode(file(var.scfile))}"
+  }
+  PROT
    
 }
 
