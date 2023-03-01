@@ -165,8 +165,8 @@ resource "null_resource" "docker_provisioner" {
         password  = "${var.VirtualMachine["linux_admin_password"]}"
     }
     provisioner "file" {
-        source        = "image-projectzomboid.bash"
-        destination   = "/tmp/image-projectzomboid.bash"
+        source        = "image-projectzomboid.sh"
+        destination   = "/tmp/image-projectzomboid.sh"
     }
     provisioner "remote-exec" {
         inline = [
