@@ -13,14 +13,14 @@ provider "azurerm" {
   features {}
 }
 
-#Create the Resource Group
+## Create the Resource Group
 resource "azurerm_resource_group" "rg" {
   name     = "RG-${var.resource_group_name["name"]}"
   location = var.resource_group_name["location"]
   tags     = var.tags
 }
 
-# Create the network VNET
+## Create the Resource VNet
 resource "azurerm_virtual_network" "vnet" {
   name                = "vNET-${var.resource_group_name["name"]}"
   location            = azurerm_resource_group.rg.location
@@ -29,7 +29,7 @@ resource "azurerm_virtual_network" "vnet" {
   tags                = var.tags
 }
 
-# Create a subNet
+## Create the Resource SubNet
 resource "azurerm_subnet" "subnet" {
   name                 = "sNet-Local"
   resource_group_name  = azurerm_resource_group.rg.name
@@ -37,15 +37,15 @@ resource "azurerm_subnet" "subnet" {
   address_prefixes     = ["10.0.2.0/24"]
 }
 
-## Create Security Group to access linux
+## Create the Resource SNG
 resource "azurerm_network_security_group" "nsg" {
   name                = "NSG-${var.resource_group_name["name"]}"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   tags                = var.tags
-
 }
 
+## Create the Resource Network Rules
 resource "azurerm_network_security_rule" "rules" {
   for_each                    = local.nsgrules 
   name                        = each.key
@@ -61,7 +61,24 @@ resource "azurerm_network_security_rule" "rules" {
   network_security_group_name = azurerm_network_security_group.nsg.name
 }
 
-## Associate the linux NSG with the subnet
+## Create the Resource Storage Account
+resource "azurerm_storage_account" "storage_account" {
+  name                      = var.VirtualMachine["linux_admin_username"]
+  resource_group_name       = azurerm_resource_group.rg.name
+  location                  = azurerm_resource_group.rg.location
+  account_tier              = "Standard"
+  account_replication_type  = "LRS"
+  tags                      = var.tags
+}
+
+## Create the Resource Storage Container
+resource "azurerm_storage_container" "storage_container" {
+  name                  = "storage-${var.VirtualMachine["linux_admin_username"]}"
+  storage_account_name  = azurerm_storage_account.storage_account.name
+  container_access_type = "private"
+}
+
+## Associate VM NSG with the subnet
 resource "azurerm_subnet_network_security_group_association" "VM-nsg-association" {
   depends_on=[azurerm_resource_group.rg]
   subnet_id                 = azurerm_subnet.subnet.id
@@ -74,7 +91,7 @@ resource "azurerm_public_ip" "VM-ip" {
   name                = "IP-${var.VirtualMachine["VM_Name"]}"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
-  allocation_method   = "Static"
+  allocation_method   = "Dynamic"
   tags                = var.tags
 }
 
@@ -85,7 +102,6 @@ resource "azurerm_network_interface" "VM-nic" {
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   tags                = var.tags
-
   ip_configuration {
     name                          = "internal"
     subnet_id                     = azurerm_subnet.subnet.id
@@ -94,38 +110,75 @@ resource "azurerm_network_interface" "VM-nic" {
   }
 }
 
-## Create Linux VM with linux server
-resource "azurerm_linux_virtual_machine" "VM" {
+
+  #########################################
+  ##   Create Linux VM with linux server ##
+  #########################################
+resource "azurerm_virtual_machine" "VM" {
   depends_on=[azurerm_network_interface.VM-nic]
+
   location              = azurerm_resource_group.rg.location
   resource_group_name   = azurerm_resource_group.rg.name
   name                  = var.VirtualMachine["VM_Name"]
   network_interface_ids = [azurerm_network_interface.VM-nic.id]
-  size                  = var.VirtualMachine["size"]
+  vm_size               = var.VirtualMachine["size"]
   tags                  = var.tags 
-  source_image_reference {
+  storage_image_reference {
     publisher = var.VirtualMachine["publisher"]
     offer     = var.VirtualMachine["offer"]
     sku       = var.VirtualMachine["sku"]    
     version   = var.VirtualMachine["version"]
   }
-  
-  os_disk {
-    name                 = "DISK-${var.VirtualMachine["VM_Name"]}"
-    caching              = "ReadWrite"
-    storage_account_type = var.VirtualMachine["storage_account_type"]  
+  storage_os_disk {
+    name          = "DISK-${var.VirtualMachine["VM_Name"]}"
+    vhd_uri       = "${azurerm_storage_account.storage_account.primary_blob_endpoint}${azurerm_storage_container.storage_container.name}/DISK-${var.VirtualMachine["VM_Name"]}.vhd"
+    caching       = "ReadWrite"
+    create_option = "FromImage"
   }
-  
-  computer_name  = var.VirtualMachine["VM_Name"]
-  admin_username = var.VirtualMachine["linux_admin_username"]
-  admin_password = var.VirtualMachine["linux_admin_password"]
-  disable_password_authentication = false
+  os_profile {
+    computer_name  = var.VirtualMachine["VM_Name"]
+    admin_username = var.VirtualMachine["linux_admin_username"]
+    admin_password = var.VirtualMachine["linux_admin_password"]
+  }
+  os_profile_linux_config {
+    disable_password_authentication = false
+  }
 }
 
-## Data template Bash bootstrapping file
-data "template_file" "linux-vm-cloud-init" {
-  template = file("linux-vm-docker.sh")
+################################
+## Get data cfg VM Publib IP  ##
+data "azurerm_public_ip" "Data-ip" {
+  name                = "${azurerm_public_ip.VM-ip.name}"
+  resource_group_name = "${azurerm_virtual_machine.VM.resource_group_name}"
 }
+
+#################################
+## Extension to Install Docker ##
+resource "null_resource" "docker_provisioner" {
+    triggers = {
+        public_ip = data.azurerm_public_ip.Data-ip.ip_address
+    }
+    connection {
+        type  = "ssh"
+        host  = "${data.azurerm_public_ip.Data-ip.ip_address}"
+        user  = "${var.VirtualMachine["linux_admin_username"]}"
+        password  = "${var.VirtualMachine["linux_admin_password"]}"
+    }
+    provisioner "file" {
+        source        = "image-projectzomboid.bash"
+        destination   = "/tmp/image-projectzomboid.bash"
+    }
+    provisioner "remote-exec" {
+        inline = [
+            "sh /tmp/image-projectzomboid.bash",
+            "sudo docker run -d -t -i -e SERVERNAME='MONGA_PZServer' -p 27015:27015/tcp -p 16261:16261/udp -p 16262:16262/udp -e ADMINPASSWORD='Password@123' -e FORCEUPDATE='' -e MOD_IDS='2931602698,2931602698' -e WORKSHOP_IDS='2875848298,2849247394,2923439994,2859296947,2859296947,2859296947' --name projectzomboid lorthe/monga_projectzomboid",
+            "sudo docker container ls",
+            "sudo docker exec -it projectzomboid bash && ",
+
+        ]
+    }
+} 
+
 
 
 
