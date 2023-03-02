@@ -13,6 +13,22 @@ provider "azurerm" {
   features {}
 }
 
+resource "random_string" "var" {
+  length  = 3
+  upper   = false
+  lower   = true
+  number  = false
+  special = false
+}
+resource "random_string" "int" {
+  length  = 3
+  upper   = false
+  lower   = false
+  number  = true
+  special = false
+}
+
+
 ## Create the Resource Group
 resource "azurerm_resource_group" "rg" {
   name     = "RG-${var.resource_group_name["name"]}"
@@ -88,7 +104,7 @@ resource "azurerm_subnet_network_security_group_association" "VM-nsg-association
 ## Get a Static Public IP
 resource "azurerm_public_ip" "VM-ip" {
   depends_on=[azurerm_resource_group.rg] 
-  name                = "IP-${var.VirtualMachine["VM_Name"]}"
+  name                = "IP${random_string.int.result}-${var.VirtualMachine["VM_Name"]}"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   allocation_method   = "Dynamic"
@@ -98,7 +114,7 @@ resource "azurerm_public_ip" "VM-ip" {
 ## Create Network Card for linux VM
 resource "azurerm_network_interface" "VM-nic" {
   depends_on = [azurerm_resource_group.rg]
-  name                = "NIC-${var.VirtualMachine["VM_Name"]}"
+  name                = "NIC${random_string.int.result}-${var.VirtualMachine["VM_Name"]}"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   tags                = var.tags
@@ -130,8 +146,8 @@ resource "azurerm_virtual_machine" "VM" {
     version   = var.VirtualMachine["version"]
   }
   storage_os_disk {
-    name          = "DISK-${var.VirtualMachine["VM_Name"]}"
-    vhd_uri       = "${azurerm_storage_account.storage_account.primary_blob_endpoint}${azurerm_storage_container.storage_container.name}/DISK-${var.VirtualMachine["VM_Name"]}.vhd"
+    name          = "DISK${random_string.int.result}-${var.VirtualMachine["VM_Name"]}"
+    vhd_uri       = "${azurerm_storage_account.storage_account.primary_blob_endpoint}${azurerm_storage_container.storage_container.name}/DISK${random_string.int.result}-${var.VirtualMachine["VM_Name"]}.vhd"
     caching       = "ReadWrite"
     create_option = "FromImage"
   }
@@ -165,16 +181,20 @@ resource "null_resource" "docker_provisioner" {
         password  = "${var.VirtualMachine["linux_admin_password"]}"
     }
     provisioner "file" {
+        source        = "Docker-Install.sh"
+        destination   = "/tmp/Docker-Install.sh"
+    }
+    provisioner "file" {
         source        = "image-projectzomboid.sh"
         destination   = "/tmp/image-projectzomboid.sh"
     }
     provisioner "remote-exec" {
         inline = [
-            "sh /tmp/image-projectzomboid.bash",
-            "sudo docker run -d -t -i -e SERVERNAME='MONGA_PZServer' -p 27015:27015/tcp -p 16261:16261/udp -p 16262:16262/udp -e ADMINPASSWORD='Password@123' -e FORCEUPDATE='' -e MOD_IDS='2931602698,2931602698' -e WORKSHOP_IDS='2875848298,2849247394,2923439994,2859296947,2859296947,2859296947' --name projectzomboid lorthe/monga_projectzomboid",
+            "sudo sh /tmp/Docker-Install.sh", ##  Install Docker
             "sudo docker container ls",
-            "sudo docker exec -it projectzomboid bash && ",
-
+            "sudo sh /tmp/image-projectzomboid.sh", ##  Install Server ProjectZomboid
+            "sudo docker container ls",
+            
         ]
     }
 } 
