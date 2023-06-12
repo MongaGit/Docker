@@ -159,19 +159,6 @@ nsgrules = {
       destination_address_prefix = "*"
     }
 
-    ## Hunt-Showdown
-    Hunt-Showdown = {
-      name                       = "Hunt-Showdown"
-      priority                   = 109
-      direction                  = "Inbound"
-      access                     = "Allow"
-      protocol                   = "*"
-      source_port_range          = "*"
-      destination_port_range     = "7777-7787"
-      source_address_prefix      = "*"
-      destination_address_prefix = "*"
-    }
-
     ## DayZ
     DayZ = {
       name                       = "DayZ"
@@ -181,19 +168,6 @@ nsgrules = {
       protocol                   = "*"
       source_port_range          = "*"
       destination_port_range     = "2302-2312"
-      source_address_prefix      = "*"
-      destination_address_prefix = "*"
-    }
-
-    ## V-Rising
-    V-Rising = {
-      name                       = "V-Rising"
-      priority                   = 111
-      direction                  = "Inbound"
-      access                     = "Allow"
-      protocol                   = "*"
-      source_port_range          = "*"
-      destination_port_range     = "*"
       source_address_prefix      = "*"
       destination_address_prefix = "*"
     }
@@ -210,32 +184,4 @@ nsgrules = {
       source_address_prefix      = "*"
       destination_address_prefix = "*"
     }
-
-    ## 7-Days-To-Die
-    Seven-Days-To-Die = {
-      name                       = "7-Days-To-Die"
-      priority                   = 110
-      direction                  = "Inbound"
-      access                     = "Allow"
-      protocol                   = "*"
-      source_port_range          = "*"
-      destination_port_range     = "26900-26910"
-      source_address_prefix      = "*"
-      destination_address_prefix = "*"
-    }
-
-    ## GTA-San-Andreas
-    GTA-San-Andreas = {
-      name                       = "GTA-San-Andreas"
-      priority                   = 111
-      direction                  = "Inbound"
-      access                     = "Allow"
-      protocol                   = "*"
-      source_port_range          = "*"
-      destination_port_range     = "*"
-      source_address_prefix      = "*"
-      destination_address_prefix = "*"
-    }
-  }
- 
 }
