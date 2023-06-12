@@ -4,7 +4,7 @@
 variable "resource_group_name" {
     type = map(string)
   default = {
-    "name"        = "Monga-lab"
+    "name"        = "Container-Monga"
     "location"    = "brazilsouth"
  }
 }
@@ -14,9 +14,9 @@ variable "VirtualMachine" {
   default = {
     ## User
     "linux_admin_username"  = "monga"
-    "linux_admin_password"  = "Monga@@2023!"
+    "linux_admin_password"  = "*****"
     ## OS Config
-    "VM_Name"               = "DOCKER01"
+    "VM_Name"               = "CONTAINER01"
     "size"                  = "Standard_DS3_v2"
     "storage_account_type"  = "Standard_LRS"
     ## Source Image Reference
@@ -35,8 +35,8 @@ variable "scfile" {
 variable "tags" {
   type        = map(string)
   default = {
-    env         = "DockerServer",
-    rg          = "rg-monga",
+    env         = "Container",
+    rg          = "Container-Monga",
     dept        = "dev",
     costcenter  = "monga"
   }

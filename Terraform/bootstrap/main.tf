@@ -30,7 +30,7 @@ resource "null_resource" "docker_provisioner" {
         type  = "ssh"
         host  = "${data.azurerm_public_ip.Data-ip.ip_address}"
         user  = "monga"
-        password  = "Monga@@2023!" 
+        password  = "*****" 
     }
 
     provisioner "file" {
